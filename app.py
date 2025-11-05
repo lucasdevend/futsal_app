@@ -35,17 +35,25 @@ def init_db():
         )
     """)
 
-    # Tabela de admins
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS admin (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT NOT NULL,
-            senha TEXT NOT NULL
-        )
-    """)
+# Tabela de admins
+c.execute("""
+    CREATE TABLE IF NOT EXISTS admin (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT NOT NULL,
+        senha TEXT NOT NULL
+    )
+""")
+
+# Verifica se o admin já existe
+c.execute("SELECT * FROM admin WHERE usuario = 'admin'")
+if not c.fetchone():
+    c.execute("INSERT INTO admin (usuario, senha) VALUES (?, ?)",
+            ('admin', generate_password_hash('551469')))
+else:
     c.execute("UPDATE admin SET senha = ? WHERE usuario = ?",
-        (generate_password_hash('551469'), 'admin'))
-    conn.commit()
+            (generate_password_hash('551469'), 'admin'))
+
+conn.commit()
 
     # Tabela de alunos permanentes
     c.execute("""

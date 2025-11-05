@@ -34,8 +34,7 @@ def init_db():
             numero_chamada INTEGER NOT NULL
         )
     """)
-
-# Tabela de admins
+    # Tabela de admins
 c.execute("""
     CREATE TABLE IF NOT EXISTS admin (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +52,7 @@ else:
     c.execute("UPDATE admin SET senha = ? WHERE usuario = ?",
             (generate_password_hash('551469'), 'admin'))
 
-conn.commit()
+    conn.commit()
 
     # Tabela de alunos permanentes
     c.execute("""

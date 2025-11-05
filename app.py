@@ -127,7 +127,7 @@ def index():
 
         # Validação de horário
         if not (horario_inicio <= agora.time() <= horario_fim):
-            flash("Fora do horário permitido! Apenas das 08:00 às 10:00.", "danger")
+            flash("Fora do horário permitido! Apenas das 13:00 às 14:00.", "danger")
             return render_template('index.html')
 
         # Conexão com o banco de dados

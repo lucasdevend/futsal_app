@@ -34,25 +34,24 @@ def init_db():
             numero_chamada INTEGER NOT NULL
         )
     """)
+
     # Tabela de admins
-c.execute("""
-    CREATE TABLE IF NOT EXISTS admin (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario TEXT NOT NULL,
-        senha TEXT NOT NULL
-    )
-""")
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT NOT NULL,
+            senha TEXT NOT NULL
+        )
+    """)
 
-# Verifica se o admin já existe
-c.execute("SELECT * FROM admin WHERE usuario = 'admin'")
-if not c.fetchone():
-    c.execute("INSERT INTO admin (usuario, senha) VALUES (?, ?)",
-            ('admin', generate_password_hash('551469')))
-else:
-    c.execute("UPDATE admin SET senha = ? WHERE usuario = ?",
-            (generate_password_hash('551469'), 'admin'))
-
-    conn.commit()
+    # Verifica se o admin já existe
+    c.execute("SELECT * FROM admin WHERE usuario = 'admin'")
+    if not c.fetchone():
+        c.execute("INSERT INTO admin (usuario, senha) VALUES (?, ?)",
+                ('admin', generate_password_hash('551469')))
+    else:
+        c.execute("UPDATE admin SET senha = ? WHERE usuario = ?",
+                (generate_password_hash('551469'), 'admin'))
 
     # Tabela de alunos permanentes
     c.execute("""
@@ -71,6 +70,7 @@ else:
             GROUP BY nome, cpf4
         );
     """)
+
     c.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_aluno_nome_cpf4
         ON alunos_cadastrados (nome, cpf4);
@@ -92,7 +92,9 @@ else:
     conn.commit()
     conn.close()
 
+# Chamar a função para criar/inicializar o banco
 init_db()
+
 
 # ---------------------------------
 # ROTA PRINCIPAL (ALUNO)

@@ -1,0 +1,256 @@
+/* ======= RESET GLOBAL ======= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ======= FONTES ======= */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+/* ======= ESTILO BASE ======= */
+body.admin {
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #001f3f, #003366);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 10px;
+}
+
+/* ======= CONTAINER PRINCIPAL ======= */
+.container {
+    width: 100%;
+    max-width: 900px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 25px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* ======= CABECALHO ======= */
+h2 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+h3 {
+    margin-top: 20px;
+}
+
+/* ======= FLASH MESSAGES ======= */
+p.success {
+    color: #2ecc71;
+    background-color: rgba(46, 204, 113, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+p.danger {
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+/* ======= TABELA ======= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+th {
+    background-color: rgba(0, 0, 0, 0.4);
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ======= BOTOES GERAIS ======= */
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    font-size: 15px;
+}
+
+/* BOTOES PRINCIPAIS */
+.btn-sair {
+    background: linear-gradient(135deg, #0355c2, #952b36);
+}
+
+.btn-sair:hover {
+    transform: scale(1.05);
+}
+
+/* Botoes de dashboard */
+.btn-cadastrar {
+    background: linear-gradient(135deg, #0074D9, #005fa3);
+}
+
+.btn-baixar {
+    background: linear-gradient(135deg, #28a745, #218838);
+}
+
+.btn-limpar {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+}
+
+/* Hover efeitos */
+.btn-cadastrar:hover {
+    background: linear-gradient(135deg, #005fa3, #003366);
+    transform: scale(1.03);
+}
+
+.btn-baixar:hover {
+    background: linear-gradient(135deg, #218838, #19692c);
+    transform: scale(1.03);
+}
+
+.btn-limpar:hover {
+    background: linear-gradient(135deg, #e0a800, #b38600);
+    transform: scale(1.03);
+}
+
+/* Botoes dentro da tabela */
+.btn-editar {
+    background: linear-gradient(135deg, #0074D9, #005fa3);
+    color: white;
+}
+
+.btn-editar:hover {
+    background: linear-gradient(135deg, #005fa3, #003366);
+    transform: scale(1.03);
+}
+
+.btn-excluir {
+    background: linear-gradient(135deg, #dc3545, #a71d2a);
+    color: white;
+}
+
+.btn-excluir:hover {
+    background: linear-gradient(135deg, #a71d2a, #7a1015);
+    transform: scale(1.03);
+}
+
+/* Agrupamento de botoes */
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+/* ======= FORMULARIO DE EDICAO DE ALUNO ======= */
+.form-editar label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #e0e0e0;
+    font-size: 16px;
+}
+
+.form-editar input[type="text"],
+.form-editar input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 5px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    background-color: rgba(255,255,255,0.05);
+    color: #fff;
+    font-size: 16px;
+    transition: border 0.3s, box-shadow 0.3s;
+}
+
+.form-editar input:focus {
+    border-color: #0074D9;
+    box-shadow: 0 0 8px rgba(0,116,217,0.5);
+    outline: none;
+}
+
+/* Remove setinhas de input number */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Botões do formulário */
+.botoes-edicao {
+    margin-top: 25px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.botoes-edicao .btn-editar {
+    flex: 1;
+}
+
+.botoes-edicao .btn-excluir {
+    flex: 1;
+}
+
+/* Responsividade do formulário */
+@media (max-width: 600px) {
+    .botoes-edicao {
+        flex-direction: column;
+    }
+}
+
+/* ======= RODAPÉ ======= */
+.rodape {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    color: #e0e0e0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rodape strong {
+    color: #06b1ff;
+}
+
+/* ======= RESPONSIVIDADE ======= */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+
+    table, th, td {
+        font-size: 14px;
+    }
+
+    .btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+}

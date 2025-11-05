@@ -1,0 +1,132 @@
+
+/* ======= RESET BASIC0 ======= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ======= FUNDO ======= */
+body.registro {
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #001f3f, #003366);
+    color: white;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+/* ======= CONTAINER ======= */
+.registro-container {
+    width: 100%;
+    max-width: 420px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 30px 25px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.registro-container h2 {
+    margin-bottom: 25px;
+    font-weight: normal;
+}
+
+/* ======= FORM ======= */
+form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #e0e0e0;
+}
+
+input {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 6px;
+    outline: none;
+    font-size: 15px;
+}
+
+/* ======= BOTAO ======= */
+button {
+    background-color: #0074D9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s, transform 0.2s;
+}
+
+button:hover {
+    background-color: #005fa3;
+    transform: scale(1.03);
+}
+
+/* ======= MENSAGENSS ======= */
+.success {
+    color: #2ecc40;
+    margin-bottom: 10px;
+}
+
+.danger {
+    color: #ff4136;
+    margin-bottom: 10px;
+}
+
+/* ======= LINK ADMIN ======= */
+.link-admin {
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.link-admin a {
+    color: #06b1ff;
+    text-decoration: none;
+}
+
+.link-admin a:hover {
+    text-decoration: underline;
+}
+
+/* ======= RESPONSIVIDADE ======= */
+@media (max-width: 480px) {
+    .registro-container {
+        padding: 20px 15px;
+    }
+
+    input, button {
+        font-size: 14px;
+        padding: 10px;
+    }
+}
+
+
+.rodape {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    color: #e0e0e0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: 'Poppins', sans-serif;
+}
+
+.rodape strong {
+    color: #06b1ff;
+}

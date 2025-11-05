@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Dashboard Administrativo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+
+<body class="admin">
+<div class="container">
+    <h2>Bem-vindo, {{ session['admin'] }}</h2>
+
+    <div class="acoes">
+        <a href="{{ url_for('cadastrar_aluno') }}" class="btn btn-cadastrar">➕ Cadastrar Novo Aluno</a>
+        <a href="{{ url_for('baixar_registro') }}" class="btn btn-baixar">📄 Baixar Registros</a>
+        <a href="{{ url_for('limpar_presencas') }}" class="btn btn-limpar" onclick="return confirm('Deseja gerar o PDF e limpar todas as presenças antigas?')">🧹 Gerar PDF e Limpar Presenças</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-sair">Sair</a>
+
+    </div>
+
+    <h3>Alunos Cadastrados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Número de Chamada</th>
+                <th>Matricula(CPF)</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for aluno in alunos %}
+            <tr>
+                <td>{{ aluno[1] }}</td> <!-- Nome -->
+                <td>{{ aluno[2] }}</td> <!-- Nmr de Chamada -->
+                <td>{{ aluno[3] }}</td> <!-- CPF -->
+                <td>
+                    <a href="{{ url_for('editar_aluno', id=aluno[0]) }}" class="btn-editar">Editar</a>
+                    <a href="{{ url_for('excluir_aluno', id=aluno[0]) }}" class="btn-excluir" onclick="return confirm('Tem certeza que deseja excluir este aluno?')">Excluir</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">Nenhum aluno cadastrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<footer class="rodape">
+    <p>Desenvolvido por <strong>Lucas Costa</strong></p>
+</footer>
+</body>
+</html>

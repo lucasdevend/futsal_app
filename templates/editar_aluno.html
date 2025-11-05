@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Aluno</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+
+<body class="admin">
+<div class="container">
+    <h2>Editar Aluno</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p class="{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="form-editar">
+        <label>Nome:</label>
+        <input type="text" name="nome" value="{{ aluno[1] }}" required>
+
+        <label>CPF (últimos 4 dígitos):</label>
+        <input type="text" name="matricula" value="{{ aluno[2] }}" maxlength="4" required>
+
+        <label>Número de Chamada:</label>
+        <input type="number" name="numero_chamada" value="{{ aluno[3] }}" min="1" required>
+
+        <div class="botoes-edicao">
+            <button type="submit" class="btn-editar">💾 Salvar Alterações</button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn-excluir">❌ Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<footer class="rodape">
+    <p>Desenvolvido por <strong>Lucas Costa</strong></p>
+</footer>
+</body>
+</html>

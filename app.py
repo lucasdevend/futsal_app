@@ -118,7 +118,7 @@ def index():
         numero_int = int(numero_chamada)
         agora = datetime.now()
         horario_inicio = time(13, 0)  # 13:00 PM
-        horario_fim = time(14, 0)    # 14:00 PM
+        horario_fim = time(15, 15)    # 15:15 PM
 
         # Validação de dia da semana (sábado=5, domingo=6)
         if agora.weekday() not in [5, 6]:

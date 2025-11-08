@@ -15,10 +15,12 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <p class="{{ category }}">{{ message }}</p>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+              {% if category in ['success', 'danger'] and 'download' not in message %}
+                <p class="{{ category }}">{{ message }}</p>
+              {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
 
         <form method="POST">
             <label for="numero_chamada">Número de Chamada:</label>

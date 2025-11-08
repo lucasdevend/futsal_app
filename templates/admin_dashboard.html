@@ -15,6 +15,15 @@
 <div class="container">
     <h2>Bem-vindo, {{ session['admin'] }}</h2>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <p class="{{ category }}">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+
     <div class="acoes">
         <a href="{{ url_for('cadastrar_aluno') }}" class="btn btn-cadastrar">➕ Cadastrar Novo Aluno</a>
         <a href="{{ url_for('baixar_registro') }}" class="btn btn-baixar">📄 Baixar Registros</a>

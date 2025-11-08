@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
 import sqlite3
 from datetime import datetime, time, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,8 +8,10 @@ import threading
 import time as t
 import schedule
 from functools import wraps
-from flask import request, abort
 
+# Caminho absoluto para o banco
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'database.db')
 
 # ---------------------------------
 # CONFIGURACAO BASICA
@@ -21,7 +23,7 @@ app.secret_key = 'sua_chave_secreta'
 # INICIALIZACAO DO BANCO DE DADOS
 # ---------------------------------
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
     # Tabela de registros diários
@@ -131,7 +133,7 @@ def index():
             return render_template('index.html')
 
         # Conexão com o banco de dados
-        conn = sqlite3.connect('database.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT * FROM alunos_cadastrados WHERE numero_chamada = ? AND cpf4 = ?", (numero_int, cpf4))
         aluno_cad = c.fetchone()
@@ -167,7 +169,7 @@ def admin_login():
         usuario = request.form['usuario']
         senha = request.form['senha']
 
-        conn = sqlite3.connect('database.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT * FROM admin WHERE usuario = ?", (usuario,))
         admin = c.fetchone()
@@ -189,7 +191,7 @@ def admin_dashboard():
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM alunos_cadastrados ORDER BY numero_chamada ASC")
     alunos = c.fetchall()
@@ -222,7 +224,7 @@ def cadastrar_aluno():
             flash("CPF deve ter 4 dígitos!", "danger")
             return render_template('cadastrar_aluno.html')
 
-        conn = sqlite3.connect('database.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
         c.execute("SELECT id FROM alunos_cadastrados WHERE nome = ? AND cpf4 = ?", (nome, cpf4))
@@ -257,7 +259,7 @@ def editar_aluno(id):
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -283,7 +285,7 @@ def editar_aluno(id):
             conn.commit()
             flash("Aluno atualizado com sucesso!", "success")
         except sqlite3.IntegrityError:
-            flash("Erro: nome + CPF ou número de chamada duplicados!", "danger")
+            flash("Erro: nome + RG ou número de chamada duplicados!", "danger")
         finally:
             conn.close()
 
@@ -307,7 +309,7 @@ def excluir_aluno(id):
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM alunos_cadastrados WHERE id=?', (id,))
     conn.commit()
@@ -329,7 +331,7 @@ def logout():
 def gerar_pdf_registros():
     ontem = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     arquivo_pdf = f"registros_{ontem}.pdf"
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT nome, matricula, data_hora, numero_chamada FROM alunos WHERE DATE(data_hora) = ?", (ontem,))
     registros = c.fetchall()
@@ -375,7 +377,7 @@ def limpar_presencas():
     hoje = datetime.now().strftime("%Y-%m-%d")
     arquivo_pdf = f"registros_{hoje}.pdf"
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT nome, matricula, data_hora, numero_chamada FROM alunos ORDER BY data_hora ASC")
     registros = c.fetchall()
@@ -407,7 +409,7 @@ def limpar_presencas():
 # LIMPEZA AUTOMÁTICA (Sexta 23:59)
 # ======================================
 def limpar_presencas_automaticamente():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("DELETE FROM alunos")
     conn.commit()
@@ -426,6 +428,5 @@ threading.Thread(target=iniciar_agendador, daemon=True).start()
 # RODA O APP
 # ======================================
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

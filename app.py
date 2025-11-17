@@ -94,8 +94,12 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Chamar a função para criar/inicializar o banco
-init_db()
+# Só inicializar o banco se ele ainda não existir
+if not os.path.exists(DB_PATH):
+    init_db()
+else:
+    print("[DB] Usando banco já existente:", DB_PATH)
+
 
 
 # ---------------------------------

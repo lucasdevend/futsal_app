@@ -1,89 +1,99 @@
+# app.py
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, abort
-import sqlite3
+import os
 from datetime import datetime, time, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from fpdf import FPDF
-import os
 import threading
 import time as t
 import schedule
 from functools import wraps
 
-# Caminho absoluto para o banco
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'database.db')
+import psycopg2
+from psycopg2 import pool
+from psycopg2.extras import RealDictCursor
 
-# ---------------------------------
-# CONFIGURACAO BASICA
-# ---------------------------------
+# --------------------------
+# CONFIGURAÇÕES
+# --------------------------
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta'
+app.secret_key = os.environ.get("FLASK_SECRET", "sua_chave_secreta_local")
 
-# ---------------------------------
-# INICIALIZACAO DO BANCO DE DADOS
-# ---------------------------------
+# Use a variável de ambiente DATABASE_URL (defina no Render)
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://presencas_db_user:UXcbXRjabfCBBEedDfhLRsB8IiJy7KSh@dpg-d4f5mk0dl3ps73cn0c5g-a.oregon-postgres.render.com/presencas_db")
+
+# --------------------------
+# POOL DE CONEXÕES
+# --------------------------
+# Ajuste minconn/maxconn conforme necessidade
+pg_pool = pool.ThreadedConnectionPool(1, 10, dsn=DATABASE_URL)
+
+def get_conn():
+    return pg_pool.getconn()
+
+def put_conn(conn):
+    pg_pool.putconn(conn)
+
+def close_all_conns():
+    pg_pool.closeall()
+
+# --------------------------
+# INICIALIZAÇÃO DO BANCO (Postgres)
+# --------------------------
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-
-    # Tabela de registros diários
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS alunos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            matricula TEXT NOT NULL,
-            data_hora TEXT NOT NULL,
-            numero_chamada INTEGER NOT NULL
-        )
+    conn = get_conn()
+    cur = conn.cursor()
+    # Cria tabelas equivalentes (Postgres)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS alunos (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        matricula TEXT NOT NULL,
+        data_hora TIMESTAMP NOT NULL,
+        numero_chamada INTEGER NOT NULL
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS admin (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT NOT NULL UNIQUE,
+        senha TEXT NOT NULL
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS alunos_cadastrados (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        cpf4 TEXT NOT NULL,
+        numero_chamada INTEGER UNIQUE
+    );
+    """)
+    # Índice único composto para evitar duplicidade por nome+cpf4
+    cur.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_aluno_nome_cpf4 ON alunos_cadastrados (nome, cpf4);
     """)
 
-    # Tabela de admins
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS admin (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT NOT NULL,
-            senha TEXT NOT NULL
-        )
-    """)
-
-    # Verifica se o admin já existe
-    c.execute("SELECT * FROM admin WHERE usuario = 'admin'")
-    if not c.fetchone():
-        c.execute("INSERT INTO admin (usuario, senha) VALUES (?, ?)",
-                ('admin', generate_password_hash('551469')))
+    # Insere/atualiza admin padrão
+    cur.execute("SELECT id FROM admin WHERE usuario = %s", ('admin',))
+    if not cur.fetchone():
+        cur.execute("INSERT INTO admin (usuario, senha) VALUES (%s, %s)", ('admin', generate_password_hash('551469')))
     else:
-        c.execute("UPDATE admin SET senha = ? WHERE usuario = ?",
-                (generate_password_hash('551469'), 'admin'))
+        cur.execute("UPDATE admin SET senha = %s WHERE usuario = %s", (generate_password_hash('551469'), 'admin'))
 
-    # Tabela de alunos permanentes
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS alunos_cadastrados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            cpf4 TEXT NOT NULL,
-            numero_chamada INTEGER UNIQUE
-        )
+    # Remove duplicatas (mantendo o menor id)
+    cur.execute("""
+    DELETE FROM alunos_cadastrados
+    WHERE id NOT IN (
+        SELECT MIN(id) FROM alunos_cadastrados GROUP BY nome, cpf4
+    )
     """)
-    c.execute("""
-        DELETE FROM alunos_cadastrados
-        WHERE rowid NOT IN (
-            SELECT MIN(rowid)
-            FROM alunos_cadastrados
-            GROUP BY nome, cpf4
-        );
-    """)
-
-    c.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_aluno_nome_cpf4
-        ON alunos_cadastrados (nome, cpf4);
-    """)
-
-    # Inserir exemplos se vazio
-    c.execute("SELECT COUNT(*) FROM alunos_cadastrados")
-    if c.fetchone()[0] == 0:
-        c.executemany("""
+    # Inserir exemplos padrao se a tabela estiver vazia
+    cur.execute("SELECT COUNT(*) FROM alunos_cadastrados")
+    count = cur.fetchone()[0]
+    if count == 0:
+        cur.executemany("""
             INSERT INTO alunos_cadastrados (nome, numero_chamada, cpf4)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         """, [
             ('Thiago Silva', 1, '1995'),
             ('Victor Pereira', 2, '5678'),
@@ -92,19 +102,18 @@ def init_db():
         ])
 
     conn.commit()
-    conn.close()
+    cur.close()
+    put_conn(conn)
 
-# Só inicializar o banco se ele ainda não existir
-if not os.path.exists(DB_PATH):
+# Inicializa DB uma vez no start (não recreia se já existe no Postgres)
+try:
     init_db()
-else:
-    print("[DB] Usando banco já existente:", DB_PATH)
+except Exception as e:
+    print("[ERRO init_db]:", e)
 
-
-
-# ---------------------------------
+# --------------------------
 # ROTA PRINCIPAL (ALUNO)
-# ---------------------------------
+# --------------------------
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -123,8 +132,8 @@ def index():
 
         numero_int = int(numero_chamada)
         agora = datetime.now()
-        horario_inicio = time(13, 0)  # 13:00 PM
-        horario_fim = time(15, 15)    # 15:15 PM
+        horario_inicio = time(13, 0)  # 13:00
+        horario_fim = time(15, 15)    # 15:15
 
         # Validação de dia da semana (sábado=5, domingo=6)
         if agora.weekday() not in [5, 6]:
@@ -133,36 +142,35 @@ def index():
 
         # Validação de horário
         if not (horario_inicio <= agora.time() <= horario_fim):
-            flash("Fora do horário permitido! Apenas das 13:00 às 14:00.", "danger")
+            flash("Fora do horário permitido! Apenas das 13:00 às 15:15.", "danger")
             return render_template('index.html')
 
-        # Conexão com o banco de dados
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         c = conn.cursor()
-        c.execute("SELECT * FROM alunos_cadastrados WHERE numero_chamada = ? AND cpf4 = ?", (numero_int, cpf4))
+        c.execute("SELECT id, nome FROM alunos_cadastrados WHERE numero_chamada = %s AND cpf4 = %s", (numero_int, cpf4))
         aluno_cad = c.fetchone()
 
         if not aluno_cad:
             flash("Número de chamada ou CPF inválido!", "danger")
-            conn.close()
+            put_conn(conn)
             return render_template('index.html')
 
         hoje = agora.strftime("%Y-%m-%d")
-        c.execute("SELECT * FROM alunos WHERE numero_chamada = ? AND DATE(data_hora) = ?", (numero_int, hoje))
+        c.execute("SELECT id FROM alunos WHERE numero_chamada = %s AND DATE(data_hora) = %s", (numero_int, hoje))
         registro = c.fetchone()
 
         if registro:
             flash("Você já registrou sua presença hoje!", "danger")
         else:
-            c.execute("INSERT INTO alunos (nome, matricula, data_hora, numero_chamada) VALUES (?, ?, ?, ?)",
-                    (aluno_cad[1], cpf4, agora.strftime("%Y-%m-%d %H:%M:%S"), numero_int))
+            c.execute("INSERT INTO alunos (nome, matricula, data_hora, numero_chamada) VALUES (%s, %s, %s, %s)",
+                      (aluno_cad[1], cpf4, agora, numero_int))
             conn.commit()
             flash("Registro enviado com sucesso!", "success")
 
-        conn.close()
+        c.close()
+        put_conn(conn)
 
     return render_template('index.html')
-
 
 # ======================================
 # LOGIN ADMIN
@@ -173,11 +181,12 @@ def admin_login():
         usuario = request.form['usuario']
         senha = request.form['senha']
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         c = conn.cursor()
-        c.execute("SELECT * FROM admin WHERE usuario = ?", (usuario,))
+        c.execute("SELECT id, usuario, senha FROM admin WHERE usuario = %s", (usuario,))
         admin = c.fetchone()
-        conn.close()
+        c.close()
+        put_conn(conn)
 
         if admin and check_password_hash(admin[2], senha):
             session['admin'] = usuario
@@ -195,11 +204,12 @@ def admin_dashboard():
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT * FROM alunos_cadastrados ORDER BY numero_chamada ASC")
+    c.execute("SELECT id, nome, cpf4, numero_chamada FROM alunos_cadastrados ORDER BY numero_chamada ASC")
     alunos = c.fetchall()
-    conn.close()
+    c.close()
+    put_conn(conn)
 
     return render_template('admin_dashboard.html', alunos=alunos)
 
@@ -228,30 +238,34 @@ def cadastrar_aluno():
             flash("CPF deve ter 4 dígitos!", "danger")
             return render_template('cadastrar_aluno.html')
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         c = conn.cursor()
-
-        c.execute("SELECT id FROM alunos_cadastrados WHERE nome = ? AND cpf4 = ?", (nome, cpf4))
+        c.execute("SELECT id FROM alunos_cadastrados WHERE nome = %s AND cpf4 = %s", (nome, cpf4))
         if c.fetchone():
             flash("Aluno com esse nome e CPF (últimos 4) já cadastrado!", "danger")
-            conn.close()
+            c.close()
+            put_conn(conn)
             return render_template('cadastrar_aluno.html')
 
-        c.execute("SELECT id FROM alunos_cadastrados WHERE numero_chamada = ?", (int(numero_chamada),))
+        c.execute("SELECT id FROM alunos_cadastrados WHERE numero_chamada = %s", (int(numero_chamada),))
         if c.fetchone():
             flash("Número de chamada já cadastrado!", "danger")
-            conn.close()
+            c.close()
+            put_conn(conn)
             return render_template('cadastrar_aluno.html')
 
         try:
-            c.execute("INSERT INTO alunos_cadastrados (nome, numero_chamada, cpf4) VALUES (?, ?, ?)",
-                    (nome, int(numero_chamada), cpf4))
+            c.execute("INSERT INTO alunos_cadastrados (nome, numero_chamada, cpf4) VALUES (%s, %s, %s)",
+                      (nome, int(numero_chamada), cpf4))
             conn.commit()
             flash("Aluno cadastrado com sucesso!", "success")
-        except sqlite3.IntegrityError:
-            flash("Erro: cadastro duplicado detectado. Verifique nome, CPF ou número.", "danger")
+        except Exception as e:
+            conn.rollback()
+            flash("Erro: cadastro duplicado detectado ou outro erro. Verifique os dados.", "danger")
+            print("[erro cadastrar_aluno]", e)
         finally:
-            conn.close()
+            c.close()
+            put_conn(conn)
 
     return render_template('cadastrar_aluno.html')
 
@@ -263,7 +277,7 @@ def editar_aluno(id):
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     cursor = conn.cursor()
 
     if request.method == 'POST':
@@ -284,20 +298,24 @@ def editar_aluno(id):
             return redirect(url_for('editar_aluno', id=id))
 
         try:
-            cursor.execute("UPDATE alunos_cadastrados SET nome=?, cpf4=?, numero_chamada=? WHERE id=?",
-                        (nome, cpf4, int(numero_chamada), id))
+            cursor.execute("UPDATE alunos_cadastrados SET nome=%s, cpf4=%s, numero_chamada=%s WHERE id=%s",
+                           (nome, cpf4, int(numero_chamada), id))
             conn.commit()
             flash("Aluno atualizado com sucesso!", "success")
-        except sqlite3.IntegrityError:
-            flash("Erro: nome + RG ou número de chamada duplicados!", "danger")
+        except Exception as e:
+            conn.rollback()
+            flash("Erro: nome + CPF ou número de chamada duplicados!", "danger")
+            print("[erro editar_aluno]", e)
         finally:
-            conn.close()
+            cursor.close()
+            put_conn(conn)
 
         return redirect(url_for('admin_dashboard'))
 
-    cursor.execute("SELECT * FROM alunos_cadastrados WHERE id=?", (id,))
+    cursor.execute("SELECT id, nome, cpf4, numero_chamada FROM alunos_cadastrados WHERE id=%s", (id,))
     aluno = cursor.fetchone()
-    conn.close()
+    cursor.close()
+    put_conn(conn)
 
     if not aluno:
         flash("Aluno não encontrado!", "danger")
@@ -313,11 +331,12 @@ def excluir_aluno(id):
     if 'admin' not in session:
         return redirect(url_for('admin_login'))
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM alunos_cadastrados WHERE id=?', (id,))
+    cursor.execute('DELETE FROM alunos_cadastrados WHERE id=%s', (id,))
     conn.commit()
-    conn.close()
+    cursor.close()
+    put_conn(conn)
     flash("Aluno excluído com sucesso!", "success")
     return redirect(url_for('admin_dashboard'))
 
@@ -335,11 +354,12 @@ def logout():
 def gerar_pdf_registros():
     ontem = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     arquivo_pdf = f"registros_{ontem}.pdf"
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT nome, matricula, data_hora, numero_chamada FROM alunos WHERE DATE(data_hora) = ?", (ontem,))
+    c.execute("SELECT nome, matricula, data_hora, numero_chamada FROM alunos WHERE DATE(data_hora) = %s", (ontem,))
     registros = c.fetchall()
-    conn.close()
+    c.close()
+    put_conn(conn)
 
     if not registros:
         return None
@@ -351,7 +371,9 @@ def gerar_pdf_registros():
     pdf.ln(10)
     pdf.set_font("Arial", "", 12)
     for r in registros:
-        linha = f"Nome: {r[0]} | Matrícula: {r[1]} | Chamada: {r[3]} | Horário: {r[2]}"
+        # r[2] é data_hora (datetime) -> format if needed
+        data_hora_str = r[2].strftime("%Y-%m-%d %H:%M:%S") if isinstance(r[2], datetime) else str(r[2])
+        linha = f"Nome: {r[0]} | Matrícula: {r[1]} | Chamada: {r[3]} | Horário: {data_hora_str}"
         pdf.cell(0, 10, linha, ln=True)
 
     pdf.output(arquivo_pdf)
@@ -381,14 +403,15 @@ def limpar_presencas():
     hoje = datetime.now().strftime("%Y-%m-%d")
     arquivo_pdf = f"registros_{hoje}.pdf"
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT nome, matricula, data_hora, numero_chamada FROM alunos ORDER BY data_hora ASC")
     registros = c.fetchall()
 
     if not registros:
         flash("Nenhum registro para salvar ou limpar!", "warning")
-        conn.close()
+        c.close()
+        put_conn(conn)
         return redirect(url_for('admin_dashboard'))
 
     pdf = FPDF()
@@ -398,13 +421,15 @@ def limpar_presencas():
     pdf.ln(10)
     pdf.set_font("Arial", "", 12)
     for r in registros:
-        linha = f"Nome: {r[0]} | Matrícula: {r[1]} | Chamada: {r[3]} | Horário: {r[2]}"
+        data_hora_str = r[2].strftime("%Y-%m-%d %H:%M:%S") if isinstance(r[2], datetime) else str(r[2])
+        linha = f"Nome: {r[0]} | Matrícula: {r[1]} | Chamada: {r[3]} | Horário: {data_hora_str}"
         pdf.cell(0, 10, linha, ln=True)
     pdf.output(arquivo_pdf)
 
     c.execute("DELETE FROM alunos")
     conn.commit()
-    conn.close()
+    c.close()
+    put_conn(conn)
 
     flash(f"Presenças salvas em '{arquivo_pdf}' e lista zerada com sucesso!", "success")
     return redirect(url_for('admin_dashboard'))
@@ -413,11 +438,12 @@ def limpar_presencas():
 # LIMPEZA AUTOMÁTICA (Sexta 23:59)
 # ======================================
 def limpar_presencas_automaticamente():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     c = conn.cursor()
     c.execute("DELETE FROM alunos")
     conn.commit()
-    conn.close()
+    c.close()
+    put_conn(conn)
     print("[🧹] Lista de presença limpa automaticamente!")
 
 def iniciar_agendador():
@@ -433,4 +459,10 @@ threading.Thread(target=iniciar_agendador, daemon=True).start()
 # ======================================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    try:
+        app.run(host="0.0.0.0", port=port)
+    finally:
+        try:
+            close_all_conns()
+        except:
+            pass
